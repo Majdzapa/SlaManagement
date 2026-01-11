@@ -96,6 +96,7 @@ public class SlaController {
             rule.setRuleName(ruleDetails.getRuleName());
             rule.setConditionsJson(ruleDetails.getConditionsJson());
             rule.setResultInstanceId(ruleDetails.getResultInstanceId());
+            rule.setResultValue(ruleDetails.getResultValue());
             rule.setRuleOrder(ruleDetails.getRuleOrder());
             return ResponseEntity.ok(ruleRepository.save(rule));
         }).orElse(ResponseEntity.notFound().build());

@@ -45,13 +45,13 @@ public class DataInitializer {
                 // clientId (0.1), country (0.2), accountType (0.3), riskScore (0.4), isVIP (0.5), amount (0.6)
                 
                 // Rule 1: General Rule - Country USA (Score 0.2)
-                createRule(sla, "USA General", "{\"country\": \"USA\"}", null, 1);
+                createRule(sla, "USA General", "{\"country\": \"USA\"}", "false", null, 1);
                 
                 // Rule 2: Specific Rule - USA + Premium (Score 0.2 + 0.3 = 0.5)
-                createRule(sla, "USA Premium Specific", "{\"country\": \"USA\", \"accountType\": \"PREMIUM\"}", null, 2);
+                createRule(sla, "USA Premium Specific", "{\"country\": \"USA\", \"accountType\": \"PREMIUM\"}", "true", null, 2);
                 
                 // Rule 3: High Value (Score 0.6)
-                createRule(sla, "High Amount", "{\"amount\": \"1000\"}", null, 3);
+                createRule(sla, "High Amount", "{\"amount\": \"1000\"}", "true", null, 3);
             
                 // Mappings (Legacy support)
                 createMapping(sla, "0.0", "0.4", "false", "Deny Transaction");
@@ -62,11 +62,12 @@ public class DataInitializer {
         };
     }
 
-    private void createRule(SlaConfiguration sla, String name, String jsonConditions, Long resultInstanceId, int order) {
+    private void createRule(SlaConfiguration sla, String name, String jsonConditions, String resultValue, Long resultInstanceId, int order) {
         SlaRule rule = new SlaRule();
         rule.setSlaConfiguration(sla);
         rule.setRuleName(name);
         rule.setConditionsJson(jsonConditions);
+        rule.setResultValue(resultValue);
         rule.setResultInstanceId(resultInstanceId);
         rule.setRuleOrder(order);
         rule.setActive(true);

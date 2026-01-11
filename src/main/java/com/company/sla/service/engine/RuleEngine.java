@@ -73,7 +73,10 @@ public class RuleEngine {
         }
 
         if (bestMatchRule != null) {
-            return String.valueOf(bestMatchRule.getResultInstanceId());
+            if (bestMatchRule.getResultInstanceId() != null) {
+                return String.valueOf(bestMatchRule.getResultInstanceId());
+            }
+            return bestMatchRule.getResultValue();
         }
 
         return null; // Or default result

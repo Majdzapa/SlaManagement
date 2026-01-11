@@ -12,6 +12,10 @@ public class ResultDataInitializer implements CommandLineRunner {
 
     private final SendNotificationResultRepository repository;
 
+    public ResultDataInitializer(SendNotificationResultRepository repository) {
+        this.repository = repository;
+    }
+
     @Override
     public void run(String... args) throws Exception {
         if (repository.count() == 0) {
