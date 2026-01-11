@@ -6,7 +6,6 @@ import com.company.sla.model.SlaRule;
 import com.company.sla.repository.SlaResultMappingRepository;
 import com.company.sla.repository.SlaRuleRepository;
 import com.company.sla.service.SlaService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,13 +14,22 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/sla")
 @CrossOrigin(origins = "http://localhost:4200")
-@RequiredArgsConstructor
 public class SlaController {
 
     private final SlaService slaService;
     private final SlaRuleRepository ruleRepository;
     private final SlaResultMappingRepository mappingRepository;
     private final com.company.sla.service.SlaContextService slaContextService;
+
+    public SlaController(SlaService slaService,
+                         SlaRuleRepository ruleRepository,
+                         SlaResultMappingRepository mappingRepository,
+                         com.company.sla.service.SlaContextService slaContextService) {
+        this.slaService = slaService;
+        this.ruleRepository = ruleRepository;
+        this.mappingRepository = mappingRepository;
+        this.slaContextService = slaContextService;
+    }
 
     // --- Contexts ---
     @GetMapping("/contexts")
@@ -86,10 +94,8 @@ public class SlaController {
     public ResponseEntity<SlaRule> updateRule(@PathVariable Long ruleId, @RequestBody SlaRule ruleDetails) {
         return ruleRepository.findById(ruleId).map(rule -> {
             rule.setRuleName(ruleDetails.getRuleName());
-            rule.setConditionField(ruleDetails.getConditionField());
-            rule.setConditionOperator(ruleDetails.getConditionOperator());
-            rule.setConditionValue(ruleDetails.getConditionValue());
-            rule.setWeight(ruleDetails.getWeight());
+            rule.setConditionsJson(ruleDetails.getConditionsJson());
+            rule.setResultInstanceId(ruleDetails.getResultInstanceId());
             rule.setRuleOrder(ruleDetails.getRuleOrder());
             return ResponseEntity.ok(ruleRepository.save(rule));
         }).orElse(ResponseEntity.notFound().build());

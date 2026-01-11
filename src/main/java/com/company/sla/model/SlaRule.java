@@ -1,8 +1,8 @@
 package com.company.sla.model;
 
-import jakarta.persistence.*;
-import lombok.Data;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;
+import lombok.Data; // Unused for methods
 
 import java.math.BigDecimal;
 
@@ -20,37 +20,33 @@ public class SlaRule {
     private SlaConfiguration slaConfiguration;
 
     private String ruleName;
-    private String conditionField;
-    private String conditionOperator; // EQUALS, GREATER_THAN, etc.
-    private String conditionValue;
-    private BigDecimal weight;
+
+    // A collection of conditions: {"country": "USA", "accountType": "PREMIUM"}
+    @Column(columnDefinition = "TEXT")
+    private String conditionsJson;
+
+    // The result to return if this rule is the best match
+    private Long resultInstanceId;
+    
+    // Legacy support or if we still want to order rules manually? 
+    // Best Match logic implies score defines winner, but order can break ties.
     private Integer ruleOrder;
+    
     private boolean isActive = true;
 
+    // Manual Getters/Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-
-    public SlaConfiguration getSlaConfiguration() { return slaConfiguration; }
-    public void setSlaConfiguration(SlaConfiguration slaConfiguration) { this.slaConfiguration = slaConfiguration; }
-
     public String getRuleName() { return ruleName; }
     public void setRuleName(String ruleName) { this.ruleName = ruleName; }
-
-    public String getConditionField() { return conditionField; }
-    public void setConditionField(String conditionField) { this.conditionField = conditionField; }
-
-    public String getConditionOperator() { return conditionOperator; }
-    public void setConditionOperator(String conditionOperator) { this.conditionOperator = conditionOperator; }
-
-    public String getConditionValue() { return conditionValue; }
-    public void setConditionValue(String conditionValue) { this.conditionValue = conditionValue; }
-
-    public BigDecimal getWeight() { return weight; }
-    public void setWeight(BigDecimal weight) { this.weight = weight; }
-
+    public SlaConfiguration getSlaConfiguration() { return slaConfiguration; }
+    public void setSlaConfiguration(SlaConfiguration slaConfiguration) { this.slaConfiguration = slaConfiguration; }
+    public String getConditionsJson() { return conditionsJson; }
+    public void setConditionsJson(String conditionsJson) { this.conditionsJson = conditionsJson; }
+    public Long getResultInstanceId() { return resultInstanceId; }
+    public void setResultInstanceId(Long resultInstanceId) { this.resultInstanceId = resultInstanceId; }
     public Integer getRuleOrder() { return ruleOrder; }
     public void setRuleOrder(Integer ruleOrder) { this.ruleOrder = ruleOrder; }
-
     public boolean isActive() { return isActive; }
-    public void setActive(boolean isActive) { this.isActive = isActive; }
+    public void setActive(boolean active) { isActive = active; }
 }

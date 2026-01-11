@@ -1,11 +1,11 @@
 package com.company.sla.model.context;
 
-import com.company.sla.annotation.SlaContext;
-import lombok.Data; // Leaving it here but adding explicit getters just in case
+import com.company.sla.annotation.SlaConfig;
+import lombok.Data; // Keeping explicitly just in case, though we have manual getters
 import java.math.BigDecimal;
 
 @Data
-@SlaContext(displayName = "Client Transaction")
+@SlaConfig(displayName = "Client Transaction")
 public class ClientContext {
     private String clientId;
     private String country;

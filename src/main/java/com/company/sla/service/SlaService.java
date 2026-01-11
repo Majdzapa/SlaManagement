@@ -2,7 +2,6 @@ package com.company.sla.service;
 
 import com.company.sla.model.SlaConfiguration;
 import com.company.sla.repository.SlaConfigurationRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -10,10 +9,13 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 public class SlaService {
 
     private final SlaConfigurationRepository slaConfigurationRepository;
+
+    public SlaService(SlaConfigurationRepository slaConfigurationRepository) {
+        this.slaConfigurationRepository = slaConfigurationRepository;
+    }
 
     public List<SlaConfiguration> getAllSlas() {
         return slaConfigurationRepository.findAll();

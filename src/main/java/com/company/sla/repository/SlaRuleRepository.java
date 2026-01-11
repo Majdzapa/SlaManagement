@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface SlaRuleRepository extends JpaRepository<SlaRule, Long> {
     List<SlaRule> findBySlaConfigurationIdOrderByRuleOrderAsc(Long slaId);
+    List<SlaRule> findBySlaConfigurationIdAndIsActiveTrueOrderByRuleOrderAsc(Long slaConfigurationId);
 }

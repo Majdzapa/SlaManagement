@@ -1,6 +1,6 @@
 package com.company.sla.service;
 
-import com.company.sla.annotation.SlaContext;
+import com.company.sla.annotation.SlaConfig;
 import com.company.sla.annotation.SlaResult;
 import com.company.sla.dto.ContextDto.ContextClassInfo;
 import com.company.sla.dto.ContextDto.ContextFieldInfo;
@@ -28,9 +28,9 @@ public class SlaContextService {
     public List<ContextClassInfo> getAvailableContexts() {
         List<ContextClassInfo> contexts = new ArrayList<>();
         ClassPathScanningCandidateComponentProvider scanner = new ClassPathScanningCandidateComponentProvider(false);
-        scanner.addIncludeFilter(new AnnotationTypeFilter(SlaContext.class));
+        scanner.addIncludeFilter(new AnnotationTypeFilter(SlaConfig.class));
 
-        // Scan the base package. You might want to make this configurable.
+        // Scan the base package
         String basePackage = "com.company.sla.model"; 
 
         for (BeanDefinition bd : scanner.findCandidateComponents(basePackage)) {
@@ -100,20 +100,22 @@ public class SlaContextService {
     }
 
     private ContextClassInfo extractContextInfo(Class<?> clazz) {
-        SlaContext annotation = clazz.getAnnotation(SlaContext.class);
+        SlaConfig annotation = clazz.getAnnotation(SlaConfig.class);
         String displayName = (annotation != null && !annotation.displayName().isEmpty()) 
                 ? annotation.displayName() 
                 : clazz.getSimpleName();
 
         List<ContextFieldInfo> fields = new ArrayList<>();
-        // Get declared fields. You might want to include inherited fields depending on requirement.
-        for (Field field : clazz.getDeclaredFields()) {
-             // Basic filtering: exclude static, synthetic, etc if needed. 
-             // For now assuming all declared fields are candidates.
+        Field[] declaredFields = clazz.getDeclaredFields();
+        for (int i = 0; i < declaredFields.length; i++) {
+            Field field = declaredFields[i];
              if(!java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+                 // Weight calculation: (index + 1) * 0.1, formatted roughly
+                 double weight = (i + 1) * 0.1; 
                  fields.add(ContextFieldInfo.builder()
                          .fieldName(field.getName())
                          .fieldType(field.getType().getSimpleName())
+                         .metricWeight(weight)
                          .build());
              }
         }

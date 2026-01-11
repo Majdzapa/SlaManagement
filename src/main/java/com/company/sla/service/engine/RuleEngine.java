@@ -1,92 +1,118 @@
 package com.company.sla.service.engine;
 
+import com.company.sla.dto.ContextDto.ContextClassInfo;
+import com.company.sla.dto.ContextDto.ContextFieldInfo;
 import com.company.sla.model.SlaConfiguration;
-import com.company.sla.model.SlaResultMapping;
 import com.company.sla.model.SlaRule;
-import com.company.sla.repository.SlaResultMappingRepository;
 import com.company.sla.repository.SlaRuleRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import com.company.sla.service.SlaContextService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
-import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class RuleEngine {
 
-    private final SlaRuleRepository ruleRepository;
-    private final SlaResultMappingRepository resultMappingRepository;
+    private final SlaRuleRepository slaRuleRepository;
+    private final SlaContextService slaContextService;
+    private final ObjectMapper objectMapper;
 
-    public BigDecimal calculateTotalWeight(SlaConfiguration slaConfig, Object context) {
-        List<SlaRule> rules = ruleRepository.findBySlaConfigurationIdOrderByRuleOrderAsc(slaConfig.getId());
-        BigDecimal totalWeight = BigDecimal.ZERO;
+    public RuleEngine(SlaRuleRepository slaRuleRepository,
+                      SlaContextService slaContextService,
+                      ObjectMapper objectMapper) {
+        this.slaRuleRepository = slaRuleRepository;
+        this.slaContextService = slaContextService;
+        this.objectMapper = objectMapper;
+    }
 
+    /**
+     * Evaluates the rules for a given SLA Configuration and Context object.
+     * Returns the Result Instance ID (as String) of the Best Match rule.
+     */
+    public String determineResult(SlaConfiguration config, Object contextObj) {
+        List<SlaRule> rules = slaRuleRepository.findBySlaConfigurationIdAndIsActiveTrueOrderByRuleOrderAsc(config.getId());
+        
+        // 1. Get Context Metadata to retrieve Field Weights
+        Optional<ContextClassInfo> contextInfoOpt = slaContextService.getAvailableContexts().stream()
+                .filter(c -> c.getClassName().equals(config.getContextType()))
+                .findFirst();
+
+        if (contextInfoOpt.isEmpty()) {
+            throw new RuntimeException("Context type info not found for: " + config.getContextType());
+        }
+        ContextClassInfo contextInfo = contextInfoOpt.get();
+
+        SlaRule bestMatchRule = null;
+        double maxScore = -1.0;
+
+        // Convert context object to Map for easier comparison
+        Map<String, Object> contextMap = objectMapper.convertValue(contextObj, new TypeReference<Map<String, Object>>() {});
+
+        // 2. Iterate Rules (Rows)
         for (SlaRule rule : rules) {
-            if (evaluateRule(rule, context)) {
-                totalWeight = totalWeight.add(rule.getWeight());
+            try {
+                Map<String, Object> conditions = objectMapper.readValue(rule.getConditionsJson(), new TypeReference<Map<String, Object>>() {});
+                
+                double currentScore = calculateMatchScore(conditions, contextMap, contextInfo);
+                
+                // If it's a match (> -1) and score is higher than max
+                if (currentScore > maxScore) {
+                    maxScore = currentScore;
+                    bestMatchRule = rule;
+                }
+
+            } catch (Exception e) {
+                // Log error parsing rule?
+                continue;
             }
         }
-        return totalWeight;
+
+        if (bestMatchRule != null) {
+            return String.valueOf(bestMatchRule.getResultInstanceId());
+        }
+
+        return null; // Or default result
     }
 
-    public String determineResult(SlaConfiguration slaConfig, BigDecimal totalWeight) {
-        List<SlaResultMapping> mappings = resultMappingRepository.findBySlaConfigurationId(slaConfig.getId());
+    private double calculateMatchScore(Map<String, Object> conditions, Map<String, Object> contextValue, ContextClassInfo contextInfo) {
+        double score = 0.0;
         
-        for (SlaResultMapping mapping : mappings) {
-            // Check if weight is within range [min, max]
-            if (totalWeight.compareTo(mapping.getMinWeight()) >= 0 && 
-                totalWeight.compareTo(mapping.getMaxWeight()) <= 0) {
-                return mapping.getResultValue();
+        for (Map.Entry<String, Object> condition : conditions.entrySet()) {
+            String fieldName = condition.getKey();
+            Object requiredValue = condition.getValue();
+            Object actualValue = contextValue.get(fieldName);
+
+            // If condition is defined but values don't match -> Rule Rejected (Score -1)
+            // Assuming strict equality for now.
+            if (!valuesMatch(requiredValue, actualValue)) {
+                return -1.0;
             }
+
+            // If match, add weight
+            Double weight = getWeightForField(fieldName, contextInfo);
+            score += weight;
         }
-        return null; // Or default/error
+        return score;
     }
 
-    private boolean evaluateRule(SlaRule rule, Object context) {
-        try {
-            Object actualValue = getFieldValue(context, rule.getConditionField());
-            String expectedValue = rule.getConditionValue();
-            String operator = rule.getConditionOperator();
-
-            if (actualValue == null) return false;
-
-            return compare(actualValue, expectedValue, operator);
-        } catch (Exception e) {
-            log.error("Error evaluating rule: {}", rule.getRuleName(), e);
-            return false;
-        }
+    private boolean valuesMatch(Object required, Object actual) {
+        if (required == null) return actual == null;
+        return required.toString().equals(actual != null ? actual.toString() : null);
     }
 
-    private Object getFieldValue(Object object, String fieldName) throws NoSuchFieldException, IllegalAccessException {
-        Field field = object.getClass().getDeclaredField(fieldName);
-        field.setAccessible(true);
-        return field.get(object);
+    private Double getWeightForField(String fieldName, ContextClassInfo info) {
+        return info.getFields().stream()
+                .filter(f -> f.getFieldName().equals(fieldName))
+                .map(ContextFieldInfo::getMetricWeight)
+                .findFirst()
+                .orElse(0.0);
     }
 
-    private boolean compare(Object actual, String expected, String operator) {
-        String actualStr = String.valueOf(actual);
-        
-        switch (operator.toUpperCase()) {
-            case "EQUALS":
-                return actualStr.equals(expected);
-            case "NOT_EQUALS":
-                return !actualStr.equals(expected);
-            case "GREATER_THAN":
-                try {
-                    return new BigDecimal(actualStr).compareTo(new BigDecimal(expected)) > 0;
-                } catch (NumberFormatException e) { return false; }
-            case "LESS_THAN":
-                try {
-                    return new BigDecimal(actualStr).compareTo(new BigDecimal(expected)) < 0;
-                } catch (NumberFormatException e) { return false; }
-            case "CONTAINS":
-                return actualStr.contains(expected);
-            default:
-                return false;
-        }
-    }
+    // Deprecated methods from old engine, kept empty or removed
+    public BigDecimal calculateTotalWeight(SlaConfiguration config, Object context) { return BigDecimal.ZERO; }
 }

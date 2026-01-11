@@ -39,26 +39,40 @@ public class ContextDto {
     public static class ContextFieldInfo {
         private String fieldName;
         private String fieldType;
+        private Double metricWeight;
         
         public ContextFieldInfo() {}
-        public ContextFieldInfo(String fieldName, String fieldType) {
+        public ContextFieldInfo(String fieldName, String fieldType, Double metricWeight) {
             this.fieldName = fieldName;
             this.fieldType = fieldType;
+            this.metricWeight = metricWeight;
         }
 
         public String getFieldName() { return fieldName; }
         public void setFieldName(String fieldName) { this.fieldName = fieldName; }
         public String getFieldType() { return fieldType; }
         public void setFieldType(String fieldType) { this.fieldType = fieldType; }
+        public Double getMetricWeight() { return metricWeight; }
+        public void setMetricWeight(Double metricWeight) { this.metricWeight = metricWeight; }
         
         public static Builder builder() { return new Builder(); }
         
         public static class Builder {
             private String fieldName;
             private String fieldType;
+            private Double metricWeight;
+
             public Builder fieldName(String fieldName) { this.fieldName = fieldName; return this; }
             public Builder fieldType(String fieldType) { this.fieldType = fieldType; return this; }
-            public ContextFieldInfo build() { return new ContextFieldInfo(fieldName, fieldType); }
+            public Builder metricWeight(Double metricWeight) { this.metricWeight = metricWeight; return this; }
+            
+            public ContextFieldInfo build() {
+                ContextFieldInfo info = new ContextFieldInfo();
+                info.setFieldName(fieldName);
+                info.setFieldType(fieldType);
+                info.setMetricWeight(metricWeight);
+                return info;
+            }
         }
     }
 }

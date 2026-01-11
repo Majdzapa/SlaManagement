@@ -9,26 +9,35 @@ import com.company.sla.repository.SlaEvaluationLogRepository;
 import com.company.sla.service.engine.RuleEngine;
 import com.company.sla.service.sla.SLA;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class SlaEvaluationService {
     
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SlaEvaluationService.class);
+    private static final Logger log = LoggerFactory.getLogger(SlaEvaluationService.class);
 
     private final SlaConfigurationRepository slaConfigurationRepository;
     private final SlaEvaluationLogRepository evaluationLogRepository;
     private final RuleEngine ruleEngine;
     private final ObjectMapper objectMapper;
     private final List<SLA<?, ?>> slaImplementations;
+
+    public SlaEvaluationService(SlaConfigurationRepository slaConfigurationRepository,
+                                SlaEvaluationLogRepository evaluationLogRepository,
+                                RuleEngine ruleEngine,
+                                ObjectMapper objectMapper,
+                                List<SLA<?, ?>> slaImplementations) {
+        this.slaConfigurationRepository = slaConfigurationRepository;
+        this.evaluationLogRepository = evaluationLogRepository;
+        this.ruleEngine = ruleEngine;
+        this.objectMapper = objectMapper;
+        this.slaImplementations = slaImplementations;
+    }
 
     public EvaluationResponse evaluate(Long slaId, EvaluationRequest request) {
         SlaConfiguration config = slaConfigurationRepository.findById(slaId)
@@ -44,8 +53,10 @@ public class SlaEvaluationService {
             Object contextObj = objectMapper.convertValue(request.getContext(), contextClass);
 
             // 2. Calculate Weight & Result
-            BigDecimal totalWeight = ruleEngine.calculateTotalWeight(config, contextObj);
-            String result = ruleEngine.determineResult(config, totalWeight);
+            String result = ruleEngine.determineResult(config, contextObj);
+            
+            // For logging, we set weight to 0 as it's implicit in the score now, or we could refactor engine to return it.
+            BigDecimal totalWeight = BigDecimal.ZERO;
 
             // 3. Log Evaluation
             SlaEvaluationLog logEntry = new SlaEvaluationLog();

@@ -6,7 +6,6 @@ import com.company.sla.model.SlaRule;
 import com.company.sla.repository.SlaConfigurationRepository;
 import com.company.sla.repository.SlaResultMappingRepository;
 import com.company.sla.repository.SlaRuleRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,12 +13,19 @@ import org.springframework.context.annotation.Configuration;
 import java.math.BigDecimal;
 
 @Configuration
-@RequiredArgsConstructor
 public class DataInitializer {
 
     private final SlaConfigurationRepository slaRepository;
     private final SlaRuleRepository ruleRepository;
     private final SlaResultMappingRepository mappingRepository;
+
+    public DataInitializer(SlaConfigurationRepository slaRepository,
+                           SlaRuleRepository ruleRepository,
+                           SlaResultMappingRepository mappingRepository) {
+        this.slaRepository = slaRepository;
+        this.ruleRepository = ruleRepository;
+        this.mappingRepository = mappingRepository;
+    }
 
     @Bean
     public CommandLineRunner initData() {
@@ -35,12 +41,19 @@ public class DataInitializer {
                 sla = slaRepository.save(sla);
 
                 // Rules
-                createRule(sla, "USA Country", "country", "EQUALS", "USA", "0.3", 1);
-                createRule(sla, "Premium Account", "accountType", "EQUALS", "PREMIUM", "0.4", 2);
-                createRule(sla, "Low Risk", "riskScore", "LESS_THAN", "50", "0.2", 3);
-                createRule(sla, "VIP Status", "isVIP", "EQUALS", "true", "0.1", 4);
-
-                // Mappings
+                // Implicit weights from ClientContext:
+                // clientId (0.1), country (0.2), accountType (0.3), riskScore (0.4), isVIP (0.5), amount (0.6)
+                
+                // Rule 1: Country = USA (Score: 0.2)
+                createRule(sla, "USA Country", "{\"country\": \"USA\"}", null, 1);
+                
+                // Rule 2: Premium Account (Score: 0.3)
+                createRule(sla, "Premium Account", "{\"accountType\": \"PREMIUM\"}", null, 2);
+                
+                // Rule 3: USA + Premium (Score: 0.2 + 0.3 = 0.5)
+                createRule(sla, "USA Premium", "{\"country\": \"USA\", \"accountType\": \"PREMIUM\"}", null, 3);
+            
+                // Mappings (Legacy support, might not be used by new engine but kept for table integrity)
                 createMapping(sla, "0.0", "0.4", "false", "Deny Transaction");
                 createMapping(sla, "0.5", "1.0", "true", "Approve Transaction");
                 
@@ -49,14 +62,12 @@ public class DataInitializer {
         };
     }
 
-    private void createRule(SlaConfiguration sla, String name, String field, String operator, String value, String weight, int order) {
+    private void createRule(SlaConfiguration sla, String name, String jsonConditions, Long resultInstanceId, int order) {
         SlaRule rule = new SlaRule();
         rule.setSlaConfiguration(sla);
         rule.setRuleName(name);
-        rule.setConditionField(field);
-        rule.setConditionOperator(operator);
-        rule.setConditionValue(value);
-        rule.setWeight(new BigDecimal(weight));
+        rule.setConditionsJson(jsonConditions);
+        rule.setResultInstanceId(resultInstanceId);
         rule.setRuleOrder(order);
         rule.setActive(true);
         ruleRepository.save(rule);
