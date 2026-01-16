@@ -7,6 +7,7 @@ import com.company.sla.model.SlaEvaluationLog;
 import com.company.sla.repository.SlaConfigurationRepository;
 import com.company.sla.repository.SlaEvaluationLogRepository;
 import com.company.sla.service.engine.RuleEngine;
+import com.company.sla.dto.EvaluationResultDto;
 import com.company.sla.service.sla.SLA;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -53,10 +54,11 @@ public class SlaEvaluationService {
             Object contextObj = objectMapper.convertValue(request.getContext(), contextClass);
 
             // 2. Calculate Weight & Result
-            String result = ruleEngine.determineResult(config, contextObj);
+            EvaluationResultDto engineResult = ruleEngine.determineResult(config, contextObj);
+            String result = (engineResult != null) ? engineResult.getResult() : null;
             
-            // For logging, we set weight to 0 as it's implicit in the score now, or we could refactor engine to return it.
-            BigDecimal totalWeight = BigDecimal.ZERO;
+            // Score from engine (Sum of matched field weights)
+            BigDecimal totalWeight = engineResult != null ? BigDecimal.valueOf(engineResult.getScore()) : BigDecimal.ZERO;
 
             // 3. Log Evaluation
             SlaEvaluationLog logEntry = new SlaEvaluationLog();
@@ -66,11 +68,24 @@ public class SlaEvaluationService {
             logEntry.setResultValue(result);
             evaluationLogRepository.save(logEntry);
 
+            // Determine the 'result' boolean:
+            // - For BOOLEAN type: parse the resultValue
+            // - For Entity types: true if a rule matched, false otherwise
+            boolean booleanResult;
+            if ("BOOLEAN".equalsIgnoreCase(config.getResultType())) {
+                booleanResult = Boolean.parseBoolean(result);
+            } else {
+                booleanResult = (engineResult != null && result != null);
+            }
+
             return EvaluationResponse.builder()
-                    .result(Boolean.parseBoolean(result)) // Assuming boolean result mostly, or generic string
+                    .result(booleanResult)
                     .resultValue(result)
                     .totalWeight(totalWeight)
                     .slaName(config.getSlaName())
+                    .matchedRuleName(engineResult != null ? engineResult.getMatchedRuleName() : "No Match")
+                    .matchedRuleId(engineResult != null ? engineResult.getMatchedRuleId() : null)
+                    .matchedRule(engineResult != null ? engineResult.getMatchedRule() : null)
                     .build();
 
         } catch (ClassNotFoundException e) {

@@ -6,8 +6,12 @@ import com.company.sla.model.SlaConfiguration;
 import com.company.sla.model.SlaRule;
 import com.company.sla.repository.SlaRuleRepository;
 import com.company.sla.service.SlaContextService;
+import com.company.sla.dto.EvaluationResultDto;
+import com.company.sla.dto.MatchedRuleDto;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -17,6 +21,8 @@ import java.util.Optional;
 
 @Service
 public class RuleEngine {
+
+    private static final Logger log = LoggerFactory.getLogger(RuleEngine.class);
 
     private final SlaRuleRepository slaRuleRepository;
     private final SlaContextService slaContextService;
@@ -34,7 +40,7 @@ public class RuleEngine {
      * Evaluates the rules for a given SLA Configuration and Context object.
      * Returns the Result Instance ID (as String) of the Best Match rule.
      */
-    public String determineResult(SlaConfiguration config, Object contextObj) {
+    public EvaluationResultDto determineResult(SlaConfiguration config, Object contextObj) {
         List<SlaRule> rules = slaRuleRepository.findBySlaConfigurationIdAndIsActiveTrueOrderByRuleOrderAsc(config.getId());
         
         // 1. Get Context Metadata to retrieve Field Weights
@@ -60,6 +66,9 @@ public class RuleEngine {
                 
                 double currentScore = calculateMatchScore(conditions, contextMap, contextInfo);
                 
+                log.info("Rule '{}' conditions: {} | Match Score: {}", 
+                    rule.getRuleName(), conditions, currentScore);
+                
                 // If it's a match (> -1) and score is higher than max
                 if (currentScore > maxScore) {
                     maxScore = currentScore;
@@ -73,13 +82,35 @@ public class RuleEngine {
         }
 
         if (bestMatchRule != null) {
-            if (bestMatchRule.getResultInstanceId() != null) {
-                return String.valueOf(bestMatchRule.getResultInstanceId());
+            log.info("Best Match Rule Found: '{}' with Score: {}", bestMatchRule.getRuleName(), maxScore);
+            
+            String resultVal;
+            // Smart Result Selection: Use resultValue for primitives, resultInstanceId for entities
+            if (isPrimitiveType(config.getResultType())) {
+                resultVal = bestMatchRule.getResultValue();
+            } else if (bestMatchRule.getResultInstanceId() != null) {
+                resultVal = String.valueOf(bestMatchRule.getResultInstanceId());
+            } else {
+                resultVal = bestMatchRule.getResultValue();
             }
-            return bestMatchRule.getResultValue();
+
+            return EvaluationResultDto.builder()
+                .result(resultVal)
+                .matchedRuleName(bestMatchRule.getRuleName())
+                .matchedRuleId(bestMatchRule.getId())
+                .score(maxScore)
+                .matchedRule(MatchedRuleDto.fromSlaRule(bestMatchRule))
+                .build();
         }
 
+        log.warn("No matching rule found for SLA: {}", config.getSlaName());
         return null; // Or default result
+    }
+
+    private boolean isPrimitiveType(String resultType) {
+        if (resultType == null) return false;
+        String upper = resultType.toUpperCase();
+        return upper.equals("BOOLEAN") || upper.equals("STRING") || upper.equals("INTEGER");
     }
 
     private double calculateMatchScore(Map<String, Object> conditions, Map<String, Object> contextValue, ContextClassInfo contextInfo) {
@@ -90,8 +121,13 @@ public class RuleEngine {
             Object requiredValue = condition.getValue();
             Object actualValue = contextValue.get(fieldName);
 
-            // If condition is defined but values don't match -> Rule Rejected (Score -1)
-            // Assuming strict equality for now.
+            // If actualValue is missing in input, we don't reject the rule (Lenient)
+            // We just don't add to the score.
+            if (actualValue == null) {
+                continue;
+            }
+
+            // If it is present, it MUST match
             if (!valuesMatch(requiredValue, actualValue)) {
                 return -1.0;
             }

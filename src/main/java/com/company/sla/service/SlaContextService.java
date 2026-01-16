@@ -107,16 +107,28 @@ public class SlaContextService {
 
         List<ContextFieldInfo> fields = new ArrayList<>();
         Field[] declaredFields = clazz.getDeclaredFields();
+        
+        // Count non-static fields first for reversed weight calculation
+        int totalNonStaticFields = 0;
+        for (Field f : declaredFields) {
+            if (!java.lang.reflect.Modifier.isStatic(f.getModifiers())) {
+                totalNonStaticFields++;
+            }
+        }
+        
+        int fieldIndex = 0;
         for (int i = 0; i < declaredFields.length; i++) {
             Field field = declaredFields[i];
              if(!java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
-                 // Weight calculation: (index + 1) * 0.1, formatted roughly
-                 double weight = (i + 1) * 0.1; 
+                 // Reversed weight: first field gets highest weight
+                 // e.g., 3 fields: 1st=0.3, 2nd=0.2, 3rd=0.1
+                 double weight = (totalNonStaticFields - fieldIndex) * 0.1; 
                  fields.add(ContextFieldInfo.builder()
                          .fieldName(field.getName())
                          .fieldType(field.getType().getSimpleName())
                          .metricWeight(weight)
                          .build());
+                 fieldIndex++;
              }
         }
 

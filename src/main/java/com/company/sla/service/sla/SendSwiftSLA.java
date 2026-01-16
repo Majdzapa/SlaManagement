@@ -5,6 +5,7 @@ import com.company.sla.model.SlaRule;
 import com.company.sla.model.context.ClientContext;
 import com.company.sla.repository.SlaConfigurationRepository;
 import com.company.sla.service.engine.RuleEngine;
+import com.company.sla.dto.EvaluationResultDto;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -30,7 +31,8 @@ public class SendSwiftSLA implements SLA<ClientContext, Boolean> {
             return false;
         }
 
-        String result = ruleEngine.determineResult(config, context);
+        EvaluationResultDto engineResult = ruleEngine.determineResult(config, context);
+        String result = (engineResult != null) ? engineResult.getResult() : null;
         return Boolean.parseBoolean(result);
     }
 

@@ -2,12 +2,11 @@ package com.company.sla.config;
 
 import com.company.sla.model.result.SendNotificationResult;
 import com.company.sla.repository.SendNotificationResultRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 @Component
-@RequiredArgsConstructor
+
 public class ResultDataInitializer implements CommandLineRunner {
 
     private final SendNotificationResultRepository repository;
@@ -15,6 +14,7 @@ public class ResultDataInitializer implements CommandLineRunner {
     public ResultDataInitializer(SendNotificationResultRepository repository) {
         this.repository = repository;
     }
+
 
     @Override
     public void run(String... args) throws Exception {
