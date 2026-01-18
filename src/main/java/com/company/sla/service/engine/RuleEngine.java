@@ -114,6 +114,10 @@ public class RuleEngine {
     }
 
     private double calculateMatchScore(Map<String, Object> conditions, Map<String, Object> contextValue, ContextClassInfo contextInfo) {
+        if (conditions == null || conditions.isEmpty()) {
+            return 0.0; // Fallback rule handles everything
+        }
+
         double score = 0.0;
         
         for (Map.Entry<String, Object> condition : conditions.entrySet()) {
@@ -121,10 +125,18 @@ public class RuleEngine {
             Object requiredValue = condition.getValue();
             Object actualValue = contextValue.get(fieldName);
 
-            // If actualValue is missing in input, we don't reject the rule (Lenient)
-            // We just don't add to the score.
-            if (actualValue == null) {
-                continue;
+            // Strict Matching: If a condition is specified for a field, 
+            // the context MUST provide a value that matches.
+            // A null/empty actualValue is only permitted if the requiredValue is also effectively empty.
+            if (isEffectivelyEmpty(actualValue)) {
+                if (isEffectivelyEmpty(requiredValue)) {
+                    // Match on empty/empty (if that makes sense for the SLA)
+                    Double weight = getWeightForField(fieldName, contextInfo);
+                    score += weight;
+                    continue;
+                } else {
+                    return -1.0; // Required value "123" not satisfied by ""
+                }
             }
 
             // If it is present, it MUST match
@@ -139,9 +151,17 @@ public class RuleEngine {
         return score;
     }
 
+    private boolean isEffectivelyEmpty(Object val) {
+        if (val == null) return true;
+        if (val instanceof String) return ((String) val).trim().isEmpty();
+        return false;
+    }
+
     private boolean valuesMatch(Object required, Object actual) {
         if (required == null) return actual == null;
-        return required.toString().equals(actual != null ? actual.toString() : null);
+        String reqStr = required.toString().trim();
+        String actStr = actual != null ? actual.toString().trim() : "";
+        return reqStr.equalsIgnoreCase(actStr);
     }
 
     private Double getWeightForField(String fieldName, ContextClassInfo info) {
