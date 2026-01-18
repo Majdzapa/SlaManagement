@@ -1,7 +1,6 @@
 package com.company.sla.model.context;
 
 import com.company.sla.annotation.SlaConfig;
-import com.company.sla.annotation.SlaContext;
 import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;

@@ -49,18 +49,18 @@ public class SlaEvaluationService {
         }
 
         try {
-            // 1. Resolve Context Type
+
             Class<?> contextClass = Class.forName("com.company.sla.model.context." + config.getContextType());
             Object contextObj = objectMapper.convertValue(request.getContext(), contextClass);
 
-            // 2. Calculate Weight & Result
+
             EvaluationResultDto engineResult = ruleEngine.determineResult(config, contextObj);
             String result = (engineResult != null) ? engineResult.getResult() : null;
             
-            // Score from engine (Sum of matched field weights)
+
             BigDecimal totalWeight = engineResult != null ? BigDecimal.valueOf(engineResult.getScore()) : BigDecimal.ZERO;
 
-            // 3. Log Evaluation
+
             SlaEvaluationLog logEntry = new SlaEvaluationLog();
             logEntry.setSlaConfiguration(config);
             logEntry.setContextJson(objectMapper.writeValueAsString(request.getContext()));
@@ -68,9 +68,6 @@ public class SlaEvaluationService {
             logEntry.setResultValue(result);
             evaluationLogRepository.save(logEntry);
 
-            // Determine the 'result' boolean:
-            // - For BOOLEAN type: parse the resultValue
-            // - For Entity types: true if a rule matched, false otherwise
             boolean booleanResult;
             if ("BOOLEAN".equalsIgnoreCase(config.getResultType())) {
                 booleanResult = Boolean.parseBoolean(result);

@@ -1,12 +1,20 @@
 package com.company.sla.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.math.BigDecimal;
 
-@Data
+@Getter
+@Setter
+@ToString(exclude = "slaConfiguration")
+@EqualsAndHashCode(exclude = "slaConfiguration")
+@NoArgsConstructor
 @Entity
 @Table(name = "sla_result_mapping")
 public class SlaResultMapping {
@@ -24,21 +32,51 @@ public class SlaResultMapping {
     private String resultValue;
     private String description;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getId() {
+        return id;
+    }
 
-    public SlaConfiguration getSlaConfiguration() { return slaConfiguration; }
-    public void setSlaConfiguration(SlaConfiguration slaConfiguration) { this.slaConfiguration = slaConfiguration; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public BigDecimal getMinWeight() { return minWeight; }
-    public void setMinWeight(BigDecimal minWeight) { this.minWeight = minWeight; }
+    public SlaConfiguration getSlaConfiguration() {
+        return slaConfiguration;
+    }
 
-    public BigDecimal getMaxWeight() { return maxWeight; }
-    public void setMaxWeight(BigDecimal maxWeight) { this.maxWeight = maxWeight; }
+    public void setSlaConfiguration(SlaConfiguration slaConfiguration) {
+        this.slaConfiguration = slaConfiguration;
+    }
 
-    public String getResultValue() { return resultValue; }
-    public void setResultValue(String resultValue) { this.resultValue = resultValue; }
+    public BigDecimal getMinWeight() {
+        return minWeight;
+    }
 
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
+    public void setMinWeight(BigDecimal minWeight) {
+        this.minWeight = minWeight;
+    }
+
+    public BigDecimal getMaxWeight() {
+        return maxWeight;
+    }
+
+    public void setMaxWeight(BigDecimal maxWeight) {
+        this.maxWeight = maxWeight;
+    }
+
+    public String getResultValue() {
+        return resultValue;
+    }
+
+    public void setResultValue(String resultValue) {
+        this.resultValue = resultValue;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
 }

@@ -40,20 +40,9 @@ public class DataInitializer {
                 sla.setActive(true);
                 sla = slaRepository.save(sla);
 
-                // Rules
-                // Implicit weights from ClientContext:
-                // clientId (0.1), country (0.2), accountType (0.3), riskScore (0.4), isVIP (0.5), amount (0.6)
-                
-                // Rule 1: General Rule - Country USA (Score 0.2)
                 createRule(sla, "USA General", "{\"country\": \"USA\"}", "false", null, 1);
-                
-                // Rule 2: Specific Rule - USA + Premium (Score 0.2 + 0.3 = 0.5)
                 createRule(sla, "USA Premium Specific", "{\"country\": \"USA\", \"accountType\": \"PREMIUM\"}", "true", null, 2);
-                
-                // Rule 3: High Value (Score 0.6)
                 createRule(sla, "High Amount", "{\"amount\": \"1000\"}", "true", null, 3);
-            
-                // Mappings (Legacy support)
                 createMapping(sla, "0.0", "0.4", "false", "Deny Transaction");
                 createMapping(sla, "0.5", "1.0", "true", "Approve Transaction");
                 
